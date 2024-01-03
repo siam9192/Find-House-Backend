@@ -39,6 +39,7 @@ async function run() {
         res.send(result)
        
     })
+    // check  user role
    app.put('/api/v1/user/new/update',async(req,res)=>{
     const user = req.body;
     console.log(user)
@@ -57,10 +58,23 @@ async function run() {
    })
     // add property to fav
     app.patch('/api/v1/add-property/fav',async(req,res)=>{
-      const fav = req.body;
+      const fav = req.body.fav;
+  
       const result = await favouriteCollection.insertOne(fav);
       res.send(result)
       console.log(result)
+      
+    })
+    app.get('/api/v1/checkFavourite',async(req,res)=>{
+      const propertyId = req.query.id;
+      const email = req.query.email;
+      const query = {
+        propertyId,
+        email
+      }
+      console.log(query)
+      const result = await favouriteCollection.findOne(query)
+      res.send(result)
       
     })
     // properties CRUD operations
@@ -115,7 +129,35 @@ async function run() {
     const result = await propertiesCollection.deleteOne(query);
     res.send(result);
    })
+   
+  //  favourite properties CRUD operations
 
+  app.get('/api/v1/favourite-properties',async(req,res)=>{
+    const email = req.query.email;
+    const query = {
+      email
+    }
+    const result = await favouriteCollection.find(query).toArray();
+    const propertyIds =result.map(item => new ObjectId(item.propertyId))
+    const project = {
+      _id:1,
+      title:1,
+      photos:1,
+      location:1,
+      date:1
+    }
+    const properties = await propertiesCollection.find({
+      _id: { $in:propertyIds}
+    }).project(project).toArray();
+    res.send(properties)
+  })
+  app.delete('/api/v1/client/favourite-property/remove',async(req,res)=>{
+    const propertyId = req.query.id;
+    const email = req.query.email;
+    const query = {propertyId,email};
+    const result = await favouriteCollection.deleteOne(query);
+    res.send(result)
+  })
 
     // property requests 
     app.get('/api/v1/property-requests',async(req,res)=>{
