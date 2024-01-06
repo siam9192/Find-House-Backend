@@ -39,23 +39,51 @@ async function run() {
         res.send(result)
        
     })
+
+
+
     // check  user role
-   app.put('/api/v1/user/new/update',async(req,res)=>{
+    app.get('/api/v1/user/check-role',async(req,res)=>{
+      const email = req.query.email;
+      const result = await allUsers.findOne({email:email});
+     res.send(result.role)
+    })
+     
+   app.get('/api/v1/user/profile',async(req,res)=>{
+    const email = req.query.email;
+    const result = await allUsers.findOne({email});
+    res.send(result)
+   })
+ 
+    app.get('/api/v1/users',async(req,res)=>{
+    const project = {
+      email:1,
+      firstName:1,
+      lastName:1,
+      role:1,
+    }
+  const result = await allUsers.find().project(project).toArray();
+   res.send(result); 
+  })
+   app.put('/api/v1/user/profile/update',async(req,res)=>{
     const user = req.body;
-    console.log(user)
+
     const filter = {
       email: user.email
     }
+  
     const updatedDoc = {
-      $set: user
+      $set: user.contactInformation
     }
     const query = {
       $upsert:true
     }
+    
     const result = await allUsers.updateOne(filter,updatedDoc,query)
     res.send(result)
-    console.log(result)
+   
    })
+
     // add property to fav
     app.patch('/api/v1/add-property/fav',async(req,res)=>{
       const fav = req.body.fav;
@@ -79,7 +107,33 @@ async function run() {
     })
     // properties CRUD operations
     app.get('/api/v1/properties',async(req,res)=>{
-        const result = await propertiesCollection.find().toArray();
+      const query = req.query;
+      const filter = {
+       $and:[
+
+       ]
+      };
+      // filter.$and.push({'approved':true})
+      if(query.location != 'null'){
+     filter.$and.push({"location.city":query.location})
+      }
+      if(query.status != 'null'){
+        // filter.details
+       filter.$and.push({'details.status':query.status})
+      }
+      if(query.bedrooms != 'null'){
+     filter.$and.push({'details.extraInformation.rooms':parseInt(query.bedrooms)})
+      }
+      if(query.bathrooms != 'null'){
+        filter.$and.push({'details.extraInformation.bathRooms':parseInt(query.bathrooms)})
+         }
+         if(filter.$and.length === 0){
+          const result = await propertiesCollection.find().toArray();
+          res.send(result)
+          console.log(result)
+          return;
+         }
+        const result = await propertiesCollection.find(filter).toArray();
         res.send(result)
     })
     // get single property by id 
@@ -161,7 +215,7 @@ async function run() {
 
     // property requests 
     app.get('/api/v1/property-requests',async(req,res)=>{
-        const result = await propertiesCollection.find({approved:false}).toArray();
+        const result = await propertiesCollection.find({approved:false,request_status:'Pending'}).toArray();
         res.send(result)
     })
 
@@ -173,22 +227,48 @@ async function run() {
         _id: new ObjectId(id)
       }
       const update = {
-        approve: true
-      }
+       $set:{
+        approved: true,
+        agentInformation:   req.body.doc
+       }
 
-    //   delete property by admin 
-    app.delete('api/v1/property-request/delete',async(req,res)=>{
+      }
+      const upsert = {
+        $upsert:true
+      }
+      const result = await propertiesCollection.updateOne(filter,update,upsert);
+      res.send(result)
+   console.log(result)
+   
+    })
+     //   delete property by admin 
+    app.put('api/v1/property-request/delete',async(req,res)=>{
         const id = req.body.id;
         const filter = {
             _id: new ObjectId(id)
         }
-        const result = await propertiesCollection.deleteOne(filter);
+        const update = {
+          $set:{
+            request_status:'not approved'
+          }
+        }
+        const result = await propertiesCollection.updateOne(filter,update,{$upsert:true});
         res.send(result)
     })
-    const result = await propertiesCollection.updateOne(filter,update);
-    res.send(result)
-    })
-
+  
+  //  users
+  app.patch('/api/v1/user/update/role',async(req,res)=>{
+  const body = req.body;
+  const email = body.email;
+  const role = body.role;
+  const updatedDoc = {
+    $set:{
+      role
+    }
+  }
+  const result = await allUsers.updateOne({email},updatedDoc)
+  res.send(result)
+  })
   
   } finally {
    
