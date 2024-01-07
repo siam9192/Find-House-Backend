@@ -40,8 +40,47 @@ async function run() {
        
     })
 
+    app.post('/api/v1/user/login/google-facebook/new',async(req,res)=>{
+      const user = req.body;
+      const email = user.email;
+      const find = await allUsers.findOne({email});
+     if(find){
+      res.send({status:true})
+      return
+     }
+     else{
+      const result = await allUsers.insertOne(user);
+      res.send({status:true});
+     }
+    })
 
+   // Homepage
+ 
+   app.get('/api/v1/find-house/homepage',async(req,res)=>{
+    // const filterByCity = {
+    //        "location.city":{
+    //         $in:["Los Angeles","Chicago","San Francisco","Miami","Houseton"]
+    //        }
+    // }
+    // const cityDocumentCount = await propertiesCollection.find(filterByCity).toArray();
+    // console.log(cityDocumentCount)
+    const projection = {
+      _id:1,
+      title: 1,
+      details:1,
+      photos:1,
+      location:1,
+      
+      
+    }
+    const popularProperties = (await propertiesCollection.find().project(projection).toArray()).reverse();
+    res.send({
+      popularProperties:popularProperties.slice(0,6)
 
+    })
+  
+   })  
+   
     // check  user role
     app.get('/api/v1/user/check-role',async(req,res)=>{
       const email = req.query.email;
@@ -108,33 +147,42 @@ async function run() {
     // properties CRUD operations
     app.get('/api/v1/properties',async(req,res)=>{
       const query = req.query;
+    const sort = {
+     'details.price': parseInt(query.sort) || 1
+    }
       const filter = {
        $and:[
 
        ]
       };
-      // filter.$and.push({'approved':true})
+      filter.$and.push({'approved':true})
       if(query.location != 'null'){
      filter.$and.push({"location.city":query.location})
       }
       if(query.status != 'null'){
-        // filter.details
+      
        filter.$and.push({'details.status':query.status})
       }
-      if(query.bedrooms != 'null'){
+      if(query.bedrooms != 'null' && !query.bedrooms){
      filter.$and.push({'details.extraInformation.rooms':parseInt(query.bedrooms)})
       }
       if(query.bathrooms != 'null'){
         filter.$and.push({'details.extraInformation.bathRooms':parseInt(query.bathrooms)})
          }
+       
+        // if(parseInt(query.sort)){
+        //   sort.["details.price"]: parseInt()
+        // }
          if(filter.$and.length === 0){
           const result = await propertiesCollection.find().toArray();
           res.send(result)
-          console.log(result)
+          
           return;
          }
-        const result = await propertiesCollection.find(filter).toArray();
+        
+        const result = await propertiesCollection.find(filter).sort(sort).toArray();
         res.send(result)
+      
     })
     // get single property by id 
     app.get('/api/v1/property/:id',async(req,res)=>{
@@ -269,7 +317,11 @@ async function run() {
   const result = await allUsers.updateOne({email},updatedDoc)
   res.send(result)
   })
-  
+  // Client properties
+  app.get('/api/v1/client/properties',(req,res)=>{
+    const email = req.query.agent;
+    console.log(email)
+  })
   } finally {
    
   }
