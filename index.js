@@ -95,15 +95,19 @@ async function run() {
    })
  
     app.get('/api/v1/users',async(req,res)=>{
+      const email = req.query.email;
     const project = {
       email:1,
       firstName:1,
       lastName:1,
       role:1,
     }
+ 
   const result = await allUsers.find().project(project).toArray();
    res.send(result); 
   })
+  // get user by email
+ 
    app.put('/api/v1/user/profile/update',async(req,res)=>{
     const user = req.body;
 
@@ -277,6 +281,7 @@ async function run() {
       const update = {
        $set:{
         approved: true,
+        request_status:'Active',
         agentInformation:   req.body.doc
        }
 
@@ -314,14 +319,32 @@ async function run() {
       role
     }
   }
-  const result = await allUsers.updateOne({email},updatedDoc)
+  const query = {
+    email
+  }
+  const result = await allUsers.updateOne(query,updatedDoc)
   res.send(result)
   })
   // Client properties
-  app.get('/api/v1/client/properties',(req,res)=>{
+   app.get('/api/v1/client-properties',async(req,res)=>{
     const email = req.query.agent;
-    console.log(email)
+    const query = {
+      'agentInformation.email':email
+    }
+    const result = await propertiesCollection.find(query).toArray();
+    res.send(result)
+    console.log(result)
+   })
+  
+  // dashboard routes data 
+  app.get('/api/v1/dashboard/data',async(req,res)=>{
+    const email = req.query.email;
+    const publishedProperty = await  propertiesCollection.countDocuments({email});
+    // const TotalBookMarked = favouriteCollection.countDocuments()
+    res.send({publishedProperty})
+    
   })
+
   } finally {
    
   }
